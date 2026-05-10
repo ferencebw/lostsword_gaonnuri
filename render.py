@@ -24,25 +24,57 @@ USER_ID = "ferencebw"
 REPO_NAME = "lostsword_gaonnuri"
 
 def create_html_wrapper(day_key, day_name):
+    """미리보기 및 모바일 화면에 이미지가 꽉 차 보이도록 HTML 생성"""
+    
+    # [설명] 모바일에서 화면 비율을 맞추기 위한 핵심 메타 태그
+    viewport_meta = '<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">'
+    
     html_content = f"""<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
+    {viewport_meta}
     <title>로스트 소드 공략 - {day_name}</title>
+    
     <meta property="og:title" content="로스트 소드 공략 - {day_name}">
     <meta property="og:description" content="가온누리 {day_name} 최신 공략표 (자동 업데이트)">
     <meta property="og:image" content="https://{USER_ID}.github.io/{REPO_NAME}/{day_key}.png">
     <meta property="og:url" content="https://{USER_ID}.github.io/{REPO_NAME}/{day_key}.html">
     <meta property="og:type" content="website">
+    
     <style>
-        body {{ margin: 0; background: #222; display: flex; justify-content: center; align-items: center; min-height: 100vh; }}
-        img {{ max-width: 100%; height: auto; }}
+        /* [설명] 모바일 최적화 스타일 */
+        body {{
+            margin: 0; 
+            padding: 0;
+            /* [해결 1] 배경색을 흰색으로 변경하여 여백을 숨깁니다. */
+            background: white; 
+            
+            /* [해결 2] 중앙 정렬을 제거하고, 이미지를 상단에 배치합니다. */
+            display: block; 
+            text-align: center; /* 이미지를 가로 중앙에 배치 */
+            width: 100%;
+            height: 100%;
+        }}
+        
+        img {{
+            /* [해결 3] 이미지 너비를 모바일 화면에 꽉 채웁니다. */
+            width: 100vw; 
+            max-width: 1000px; /* 데스크탑에서 너무 커지는 것을 방지 */
+            height: auto;
+            
+            /* 불필요한 테두리 및 여백 제거 */
+            border: none;
+            display: inline-block;
+            vertical-align: top; /* 이미지를 상단에 밀착 */
+        }}
     </style>
 </head>
 <body>
     <img src="{day_key}.png" alt="{day_name} 공략">
 </body>
 </html>"""
+    
     with open(f"{day_key}.html", "w", encoding="utf-8") as f:
         f.write(html_content)
 
