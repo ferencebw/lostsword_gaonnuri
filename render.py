@@ -7,7 +7,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 import time
 
-# 요일별 설정
 SHEETS = {
     "mon": {"gid": "603726863", "name": "월요일"},
     "tue": {"gid": "1302259291", "name": "화요일"},
@@ -51,11 +50,17 @@ def take_screenshots():
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--window-size=2000,3000') # 캔버스 크기를 넉넉하게 조정
+    options.add_argument('--window-size=2000,3000')
+    
+    # [핵심] 구글 봇 탐지 우회를 위한 User-Agent 설정
+    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    options.add_argument(f'user-agent={user_agent}')
+    # 자동화 표시 제거
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option('useAutomationExtension', False)
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    # 최대 20초까지 엘리먼트가 나타나길 기다리는 설정
-    wait = WebDriverWait(driver, 20)
+    wait = WebDriverWait(driver, 30) # 대기 시간을 30초로 넉넉하게 조정
     
     try:
         for day_key, info in SHEETS.items():
@@ -63,25 +68,21 @@ def take_screenshots():
             day_name = info["name"]
             
             target_url = f"{BASE_URL}?gid={gid}&single=true&widget=false&headers=false&chrome=false"
-            print(f"[{day_name}] 접속 시도: {target_url}")
+            print(f"[{day_name}] 접속 시도...")
             
             driver.get(target_url)
             
-            # 핵심 변경 사항: <table> 태그가 화면에 나타날 때까지 최대 20초 대기
-            print(f"[{day_name}] 표 로딩 대기 중...")
-            table_element = wait.until(EC.presence_of_element_located((By.TAG_NAME, "table")))
+            try:
+                # 표가 로드될 때까지 대기
+                table_element = wait.until(EC.presence_of_element_located((By.TAG_NAME, "table")))
+                time.sleep(3) # 렌더링 안정화
+                table_element.screenshot(f"{day_key}.png")
+                create_html_wrapper(day_key, day_name)
+                print(f"[{day_name}] 완료")
+            except Exception as e:
+                print(f"[{day_name}] 실패: {e}")
+                driver.save_screenshot(f"error_{day_key}.png") # 요일별 에러 스샷 저장
             
-            # 이미지가 포함된 경우 렌더링 시간을 위해 추가로 3초만 더 대기
-            time.sleep(3)
-            
-            table_element.screenshot(f"{day_key}.png")
-            create_html_wrapper(day_key, day_name)
-            print(f"[{day_name}] 캡처 및 HTML 생성 완료")
-            
-    except Exception as e:
-        print(f"에러 발생: {e}")
-        # 에러 발생 시 현재 화면을 찍어 디버깅용으로 남김 (선택 사항)
-        driver.save_screenshot("error_debug.png")
     finally:
         driver.quit()
 
