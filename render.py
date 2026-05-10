@@ -2,11 +2,12 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 import time
-import os
 
-# 요일별 이름과 GID 매핑
+# 요일별 설정
 SHEETS = {
     "mon": {"gid": "603726863", "name": "월요일"},
     "tue": {"gid": "1302259291", "name": "화요일"},
@@ -19,11 +20,10 @@ SHEETS = {
 }
 
 BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRIM8l8Q-Te56ELukyXtuU3x1HxCqGFRVEHZeQctyPZpZiHU5srn3xnI9xSz5cmf_ayPMr0LiecHNWr/pubhtml"
-USER_ID = "ferencebw"  # 본인의 GitHub ID
+USER_ID = "ferencebw"
 REPO_NAME = "lostsword_gaonnuri"
 
 def create_html_wrapper(day_key, day_name):
-    """요일별 미리보기용 HTML 파일을 생성합니다."""
     html_content = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -43,7 +43,6 @@ def create_html_wrapper(day_key, day_name):
     <img src="{day_key}.png" alt="{day_name} 공략">
 </body>
 </html>"""
-    
     with open(f"{day_key}.html", "w", encoding="utf-8") as f:
         f.write(html_content)
 
@@ -52,30 +51,37 @@ def take_screenshots():
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--window-size=1920,2000')
+    options.add_argument('--window-size=2000,3000') # 캔버스 크기를 넉넉하게 조정
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    # 최대 20초까지 엘리먼트가 나타나길 기다리는 설정
+    wait = WebDriverWait(driver, 20)
     
     try:
         for day_key, info in SHEETS.items():
             gid = info["gid"]
             day_name = info["name"]
             
-            # 1. 이미지 캡처
             target_url = f"{BASE_URL}?gid={gid}&single=true&widget=false&headers=false&chrome=false"
-            print(f"[{day_name}] 캡처 시작...")
+            print(f"[{day_name}] 접속 시도: {target_url}")
+            
             driver.get(target_url)
-            time.sleep(5)
             
-            table_element = driver.find_element(By.TAG_NAME, 'table')
+            # 핵심 변경 사항: <table> 태그가 화면에 나타날 때까지 최대 20초 대기
+            print(f"[{day_name}] 표 로딩 대기 중...")
+            table_element = wait.until(EC.presence_of_element_located((By.TAG_NAME, "table")))
+            
+            # 이미지가 포함된 경우 렌더링 시간을 위해 추가로 3초만 더 대기
+            time.sleep(3)
+            
             table_element.screenshot(f"{day_key}.png")
-            
-            # 2. 미리보기용 HTML 파일 생성
             create_html_wrapper(day_key, day_name)
-            print(f"[{day_name}] 완료 (PNG + HTML)")
+            print(f"[{day_name}] 캡처 및 HTML 생성 완료")
             
     except Exception as e:
         print(f"에러 발생: {e}")
+        # 에러 발생 시 현재 화면을 찍어 디버깅용으로 남김 (선택 사항)
+        driver.save_screenshot("error_debug.png")
     finally:
         driver.quit()
 
