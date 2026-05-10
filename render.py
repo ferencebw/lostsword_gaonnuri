@@ -8,7 +8,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 import time
 import random
 
-# 요일별 GID 매핑 (제공해주신 pubhtml 링크 기준)
+# 요일별 GID 매핑
 SHEETS = {
     "mon": {"gid": "603726863", "name": "월요일"},
     "tue": {"gid": "1302259291", "name": "화요일"},
@@ -20,12 +20,13 @@ SHEETS = {
     "sun": {"gid": "1569757783", "name": "일요일"}
 }
 
-# pubhtml 공통 주소
+# 사용자님이 새로 게시한 '전체 문서' 주소
 BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRIM8l8Q-Te56ELukyXtuU3x1HxCqGFRVEHZeQctyPZpZiHU5srn3xnI9xSz5cmf_ayPMr0LiecHNWr/pubhtml"
 USER_ID = "ferencebw"
 REPO_NAME = "lostsword_gaonnuri"
 
 def create_html_wrapper(day_key, day_name):
+    """미리보기용 HTML 자동 생성"""
     html_content = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -53,57 +54,7 @@ def take_screenshots():
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--window-size=1920,3000')
-    
-    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    options.add_argument(f'user-agent={user_agent}')
+    options.add_argument('--window-size=2000,3500') # 높이를 넉넉하게 설정
+    options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
 
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    wait = WebDriverWait(driver, 30)
-    
-    try:
-        for day_key, info in SHEETS.items():
-            gid = info["gid"]
-            day_name = info["name"]
-            
-            # pubhtml 주소 생성
-            target_url = f"{BASE_URL}?gid={gid}&single=true"
-            
-            print(f"[{day_name}] 캡처 시작: {target_url}")
-            driver.get(target_url)
-            
-            # 1. 페이지 로딩 대기 (표가 나타날 때까지)
-            wait.until(EC.presence_of_element_located((By.TAG_NAME, "table")))
-            time.sleep(5) 
-
-            # 2. pubhtml 전용 CSS 주입 (UI 제거)
-            # pubhtml은 구조가 단순해서 아래 규칙이면 표만 남습니다.
-            driver.execute_script("""
-                var style = document.createElement('style');
-                style.innerHTML = `
-                    #header, #footer, #top-bar, .docs-sheet-container-bar { display: none !important; }
-                    body { background: white !important; overflow: visible !important; }
-                    .grid-container { top: 0 !important; }
-                    #sheets-viewport { top: 0 !important; static: !important; }
-                `;
-                document.head.appendChild(style);
-            """)
-            time.sleep(2)
-
-            # 3. 캡처 (가장 큰 테이블 또는 본문 영역)
-            try:
-                element = driver.find_element(By.TAG_NAME, "table")
-                element.screenshot(f"{day_key}.png")
-            except:
-                driver.save_screenshot(f"{day_key}.png")
-            
-            create_html_wrapper(day_key, day_name)
-            print(f"[{day_name}] 완료")
-            
-    except Exception as e:
-        print(f"에러 발생: {e}")
-    finally:
-        driver.quit()
-
-if __name__ == "__main__":
-    take_screenshots()
+    driver = webdriver.Chrome(service=Service(Chrome
