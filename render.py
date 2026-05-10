@@ -6,7 +6,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 import time
-import random
 
 # 요일별 GID 매핑
 SHEETS = {
@@ -20,13 +19,11 @@ SHEETS = {
     "sun": {"gid": "1569757783", "name": "일요일"}
 }
 
-# 전문가님이 새로 게시한 '전체 문서' 주소
 BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRIM8l8Q-Te56ELukyXtuU3x1HxCqGFRVEHZeQctyPZpZiHU5srn3xnI9xSz5cmf_ayPMr0LiecHNWr/pubhtml"
 USER_ID = "ferencebw"
 REPO_NAME = "lostsword_gaonnuri"
 
 def create_html_wrapper(day_key, day_name):
-    """미리보기용 HTML 자동 생성"""
     html_content = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -54,10 +51,9 @@ def take_screenshots():
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--window-size=2000,4000') # 높이를 아주 넉넉하게 잡았습니다.
+    options.add_argument('--window-size=2000,4000')
     options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
 
-    # 에러가 났던 부분: 괄호와 인자값이 모두 포함되어야 합니다.
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     wait = WebDriverWait(driver, 30)
     
@@ -71,19 +67,18 @@ def take_screenshots():
             
             driver.get(target_url)
             
-            # 표가 로드될 때까지 대기
             wait.until(EC.presence_of_element_located((By.TAG_NAME, "table")))
             time.sleep(5) 
 
-            # 불필요한 UI 숨기기
+            # [해결] innerHTML 대신 createTextNode를 사용하여 TrustedHTML 보안 정책 우회
             driver.execute_script("""
                 var style = document.createElement('style');
-                style.innerHTML = '#header, #footer, #top-bar, .docs-sheet-container-bar { display: none !important; } body { background: white !important; }';
+                var css = '#header, #footer, #top-bar, .docs-sheet-container-bar { display: none !important; } body { background: white !important; }';
+                style.appendChild(document.createTextNode(css));
                 document.head.appendChild(style);
             """)
-            time.sleep(1)
+            time.sleep(2)
 
-            # 본문 테이블만 찾아서 캡처
             table = driver.find_element(By.TAG_NAME, "table")
             table.screenshot(f"{day_key}.png")
             
