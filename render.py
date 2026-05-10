@@ -8,10 +8,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 import time
 import random
 
-# 인코그니토 테스트로 확인된 실제 문서 ID
-DOC_ID = "1WuLy-H6ii3ScjW-Ldy-pARYTTvDzlnOdFkJGxSyMITk"
-
-# 요일별 GID 매핑
+# 요일별 GID 매핑 (제공해주신 pubhtml 링크 기준)
 SHEETS = {
     "mon": {"gid": "603726863", "name": "월요일"},
     "tue": {"gid": "1302259291", "name": "화요일"},
@@ -23,6 +20,8 @@ SHEETS = {
     "sun": {"gid": "1569757783", "name": "일요일"}
 }
 
+# pubhtml 공통 주소
+BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRIM8l8Q-Te56ELukyXtuU3x1HxCqGFRVEHZeQctyPZpZiHU5srn3xnI9xSz5cmf_ayPMr0LiecHNWr/pubhtml"
 USER_ID = "ferencebw"
 REPO_NAME = "lostsword_gaonnuri"
 
@@ -54,7 +53,7 @@ def take_screenshots():
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--window-size=1920,3000') # 높이를 넉넉하게 설정
+    options.add_argument('--window-size=1920,3000')
     
     user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     options.add_argument(f'user-agent={user_agent}')
@@ -67,38 +66,42 @@ def take_screenshots():
             gid = info["gid"]
             day_name = info["name"]
             
-            # htmlview 엔드포인트 사용 (GID 리다이렉트 방지 및 로그인 우회)
-            target_url = f"https://docs.google.com/spreadsheets/d/{DOC_ID}/htmlview?gid={gid}"
+            # pubhtml 주소 생성
+            target_url = f"{BASE_URL}?gid={gid}&single=true"
             
-            print(f"[{day_name}] 캡처 시도 중: {target_url}")
+            print(f"[{day_name}] 캡처 시작: {target_url}")
             driver.get(target_url)
             
-            # 1. 시트 내용이 로드될 때까지 대기
-            wait.until(EC.presence_of_element_located((By.ID, "sheets-viewport")))
-            time.sleep(5) # 폰트 및 이미지 렌더링 시간 확보
+            # 1. 페이지 로딩 대기 (표가 나타날 때까지)
+            wait.until(EC.presence_of_element_located((By.TAG_NAME, "table")))
+            time.sleep(5) 
 
-            # 2. [핵심] 불필요한 UI(상단 헤더, 하단 탭바) 숨기기 (JavaScript 실행)
+            # 2. pubhtml 전용 CSS 주입 (UI 제거)
+            # pubhtml은 구조가 단순해서 아래 규칙이면 표만 남습니다.
             driver.execute_script("""
-                document.getElementById('header').style.display = 'none';
-                document.getElementById('top-bar').style.display = 'none';
-                if(document.querySelector('.docs-sheet-container-bar')) {
-                    document.querySelector('.docs-sheet-container-bar').style.display = 'none';
-                }
-                document.getElementById('sheets-viewport').style.top = '0';
+                var style = document.createElement('style');
+                style.innerHTML = `
+                    #header, #footer, #top-bar, .docs-sheet-container-bar { display: none !important; }
+                    body { background: white !important; overflow: visible !important; }
+                    .grid-container { top: 0 !important; }
+                    #sheets-viewport { top: 0 !important; static: !important; }
+                `;
+                document.head.appendChild(style);
             """)
-            time.sleep(1)
+            time.sleep(2)
 
-            # 3. 공략표가 포함된 영역만 스크린샷
-            # htmlview에서는 보통 grid-table-container 또는 body 자체를 찍는 것이 안전합니다.
-            content = driver.find_element(By.ID, "sheets-viewport")
-            content.screenshot(f"{day_key}.png")
+            # 3. 캡처 (가장 큰 테이블 또는 본문 영역)
+            try:
+                element = driver.find_element(By.TAG_NAME, "table")
+                element.screenshot(f"{day_key}.png")
+            except:
+                driver.save_screenshot(f"{day_key}.png")
             
             create_html_wrapper(day_key, day_name)
             print(f"[{day_name}] 완료")
             
     except Exception as e:
         print(f"에러 발생: {e}")
-        driver.save_screenshot("fatal_error.png")
     finally:
         driver.quit()
 
