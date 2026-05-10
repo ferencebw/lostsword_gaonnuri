@@ -51,7 +51,8 @@ def take_screenshots():
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--window-size=2000,4000')
+    # 초기 윈도우 크기를 넉넉하게 설정
+    options.add_argument('--window-size=1920,5000')
     options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
@@ -63,27 +64,31 @@ def take_screenshots():
             day_name = info["name"]
             
             target_url = f"{BASE_URL}?gid={gid}&single=true"
-            print(f"[{day_name}] 캡처 시작: {target_url}")
+            print(f"[{day_name}] 캡처 프로세스 가동...")
             
             driver.get(target_url)
             
-            wait.until(EC.presence_of_element_located((By.TAG_NAME, "table")))
-            time.sleep(5) 
+            # 시트의 메인 뷰포트가 나타날 때까지 대기
+            wait.until(EC.presence_of_element_located((By.ID, "sheets-viewport")))
+            time.sleep(7) # 대용량 시트 렌더링을 위해 시간 연장
 
-            # [해결] innerHTML 대신 createTextNode를 사용하여 TrustedHTML 보안 정책 우회
+            # UI 숨기기 및 레이아웃 고정
             driver.execute_script("""
                 var style = document.createElement('style');
-                var css = '#header, #footer, #top-bar, .docs-sheet-container-bar { display: none !important; } body { background: white !important; }';
+                var css = '#header, #footer, #top-bar, .docs-sheet-container-bar { display: none !important; } ' +
+                          'body { background: white !important; overflow: visible !important; } ' +
+                          '#sheets-viewport { position: static !important; top: 0 !important; }';
                 style.appendChild(document.createTextNode(css));
                 document.head.appendChild(style);
             """)
             time.sleep(2)
 
-            table = driver.find_element(By.TAG_NAME, "table")
-            table.screenshot(f"{day_key}.png")
+            # [핵심] 시트 내용 전체를 포함하는 컨테이너를 찾아 캡처
+            viewport = driver.find_element(By.ID, "sheets-viewport")
+            viewport.screenshot(f"{day_key}.png")
             
             create_html_wrapper(day_key, day_name)
-            print(f"[{day_name}] 완료")
+            print(f"[{day_name}] 전체 영역 캡처 성공")
             
     except Exception as e:
         print(f"오류 발생: {e}")
