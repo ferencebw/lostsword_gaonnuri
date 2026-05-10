@@ -20,7 +20,7 @@ SHEETS = {
     "sun": {"gid": "1569757783", "name": "일요일"}
 }
 
-# 사용자님이 새로 게시한 '전체 문서' 주소
+# 전문가님이 새로 게시한 '전체 문서' 주소
 BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRIM8l8Q-Te56ELukyXtuU3x1HxCqGFRVEHZeQctyPZpZiHU5srn3xnI9xSz5cmf_ayPMr0LiecHNWr/pubhtml"
 USER_ID = "ferencebw"
 REPO_NAME = "lostsword_gaonnuri"
@@ -54,7 +54,46 @@ def take_screenshots():
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--window-size=2000,3500') # 높이를 넉넉하게 설정
+    options.add_argument('--window-size=2000,4000') # 높이를 아주 넉넉하게 잡았습니다.
     options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
 
-    driver = webdriver.Chrome(service=Service(Chrome
+    # 에러가 났던 부분: 괄호와 인자값이 모두 포함되어야 합니다.
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    wait = WebDriverWait(driver, 30)
+    
+    try:
+        for day_key, info in SHEETS.items():
+            gid = info["gid"]
+            day_name = info["name"]
+            
+            target_url = f"{BASE_URL}?gid={gid}&single=true"
+            print(f"[{day_name}] 캡처 시작: {target_url}")
+            
+            driver.get(target_url)
+            
+            # 표가 로드될 때까지 대기
+            wait.until(EC.presence_of_element_located((By.TAG_NAME, "table")))
+            time.sleep(5) 
+
+            # 불필요한 UI 숨기기
+            driver.execute_script("""
+                var style = document.createElement('style');
+                style.innerHTML = '#header, #footer, #top-bar, .docs-sheet-container-bar { display: none !important; } body { background: white !important; }';
+                document.head.appendChild(style);
+            """)
+            time.sleep(1)
+
+            # 본문 테이블만 찾아서 캡처
+            table = driver.find_element(By.TAG_NAME, "table")
+            table.screenshot(f"{day_key}.png")
+            
+            create_html_wrapper(day_key, day_name)
+            print(f"[{day_name}] 완료")
+            
+    except Exception as e:
+        print(f"오류 발생: {e}")
+    finally:
+        driver.quit()
+
+if __name__ == "__main__":
+    take_screenshots()
