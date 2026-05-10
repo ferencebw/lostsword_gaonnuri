@@ -8,7 +8,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 import time
 import random
 
-# 공통 문서 ID
+# 인코그니토 테스트로 확인된 실제 문서 ID
 DOC_ID = "1WuLy-H6ii3ScjW-Ldy-pARYTTvDzlnOdFkJGxSyMITk"
 
 # 요일별 GID 매핑
@@ -39,7 +39,7 @@ def create_html_wrapper(day_key, day_name):
     <meta property="og:type" content="website">
     <style>
         body {{ margin: 0; background: #222; display: flex; justify-content: center; align-items: center; min-height: 100vh; }}
-        img {{ max-width: 100%; height: auto; border: 1px solid #444; }}
+        img {{ max-width: 100%; height: auto; }}
     </style>
 </head>
 <body>
@@ -54,7 +54,7 @@ def take_screenshots():
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--window-size=1920,2500') # 높이를 넉넉하게 설정
+    options.add_argument('--window-size=1920,3000') # 높이를 넉넉하게 설정
     
     user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     options.add_argument(f'user-agent={user_agent}')
@@ -67,29 +67,38 @@ def take_screenshots():
             gid = info["gid"]
             day_name = info["name"]
             
-            # /preview 주소를 사용하여 메뉴바가 없는 깔끔한 화면 호출
-            target_url = f"https://docs.google.com/spreadsheets/d/{DOC_ID}/preview?gid={gid}"
+            # htmlview 엔드포인트 사용 (GID 리다이렉트 방지 및 로그인 우회)
+            target_url = f"https://docs.google.com/spreadsheets/d/{DOC_ID}/htmlview?gid={gid}"
             
-            print(f"[{day_name}] 캡처 시도 중...")
-            driver.delete_all_cookies() # 세션 간섭 방지
+            print(f"[{day_name}] 캡처 시도 중: {target_url}")
             driver.get(target_url)
             
-            time.sleep(random.uniform(3, 6)) # 렌더링 시간 확보
+            # 1. 시트 내용이 로드될 때까지 대기
+            wait.until(EC.presence_of_element_located((By.ID, "sheets-viewport")))
+            time.sleep(5) # 폰트 및 이미지 렌더링 시간 확보
+
+            # 2. [핵심] 불필요한 UI(상단 헤더, 하단 탭바) 숨기기 (JavaScript 실행)
+            driver.execute_script("""
+                document.getElementById('header').style.display = 'none';
+                document.getElementById('top-bar').style.display = 'none';
+                if(document.querySelector('.docs-sheet-container-bar')) {
+                    document.querySelector('.docs-sheet-container-bar').style.display = 'none';
+                }
+                document.getElementById('sheets-viewport').style.top = '0';
+            """)
+            time.sleep(1)
+
+            # 3. 공략표가 포함된 영역만 스크린샷
+            # htmlview에서는 보통 grid-table-container 또는 body 자체를 찍는 것이 안전합니다.
+            content = driver.find_element(By.ID, "sheets-viewport")
+            content.screenshot(f"{day_key}.png")
             
-            try:
-                # 프리뷰 모드에서는 보통 'grid-table' 클래스나 특정 id의 테이블이 존재함
-                # 전체 화면을 캡처하되, 불필요한 여백을 줄이기 위해 본문 영역만 찾음
-                canvas = wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-                canvas.screenshot(f"{day_key}.png")
-                
-                create_html_wrapper(day_key, day_name)
-                print(f"[{day_name}] 완료")
-            except Exception as e:
-                print(f"[{day_name}] 실패: {e}")
-                driver.save_screenshot(f"error_{day_key}.png")
+            create_html_wrapper(day_key, day_name)
+            print(f"[{day_name}] 완료")
             
-            time.sleep(2)
-            
+    except Exception as e:
+        print(f"에러 발생: {e}")
+        driver.save_screenshot("fatal_error.png")
     finally:
         driver.quit()
 
