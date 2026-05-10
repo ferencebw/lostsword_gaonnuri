@@ -2,22 +2,26 @@ name: Update Sheet Image (Screenshot)
 
 on:
   schedule:
-    - cron: '0 * * * *'
-  workflow_dispatch:
+    - cron: '0 * * * *' # 매시간 실행
+  workflow_dispatch: # 수동 실행
+
+# 쓰기 권한을 명시적으로 부여합니다
+permissions:
+  contents: write
 
 jobs:
   capture-image:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      # 최신 버전(@v4, @v5)으로 업데이트하여 Node.js 경고 해결
+      - uses: actions/checkout@v4
       
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
       - name: Install System Dependencies
-        # 셀레니움 실행을 위한 크롬 브라우저와 한글 폰트 설치
         run: |
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable fonts-nanum
@@ -33,5 +37,6 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions-bot@users.noreply.github.com"
           git add output.png
+          # 변경사항이 있을 때만 커밋, 없으면 종료
           git commit -m "Auto-update visual image: $(date)" || exit 0
           git push
