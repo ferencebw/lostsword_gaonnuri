@@ -1,0 +1,37 @@
+name: Update Sheet Image (Screenshot)
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  capture-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install System Dependencies
+        # 셀레니움 실행을 위한 크롬 브라우저와 한글 폰트 설치
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable fonts-nanum
+          
+      - name: Install Python Libraries
+        run: pip install -r requirements.txt
+
+      - name: Run Capture Script
+        run: python render.py
+
+      - name: Push Image to Repo
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions-bot@users.noreply.github.com"
+          git add output.png
+          git commit -m "Auto-update visual image: $(date)" || exit 0
+          git push
