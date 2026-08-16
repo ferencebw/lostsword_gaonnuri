@@ -19,7 +19,7 @@ SHEETS = {
     "sun": {"gid": "1569757783", "name": "일요일"}
 }
 
-BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRs-H4xqlOvvyXXBQc2tz-wmjN3Hskx8NXwXDPCimN2wegwMwrLhjmo6mWm23Nv4ZqkK459llRbn7Ze/pubhtml"
+BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS_v218jP6t6TliliGxDYnRVJrkyUrQ_NlhqJr6ncwbdBbTHRjkIYgkxcFppFtIp1uCZA1_MHzteVZH/pubhtml"
 USER_ID = "ferencebw"
 REPO_NAME = "lostsword_gaonnuri"
 
