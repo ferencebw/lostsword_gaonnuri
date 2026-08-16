@@ -17,7 +17,15 @@ SHEETS = {
     "fri": {"gid": "297088523", "name": "금요일"},
     "sat_magic": {"gid": "307273462", "name": "토요일(마법)"},
     "sat_phys": {"gid": "173358476", "name": "토요일(물리)"},
-    "sun": {"gid": "1569757783", "name": "일요일"}
+    "sun": {"gid": "1569757783", "name": "일요일"},
+    "avalon_elaia_gate": {"gid": "335857766", "name": "아발론 엘아이아 성문"},
+    "avalon_elaia_boss": {"gid": "183137589", "name": "아발론 엘아이아 보스"},
+    "avalon_eldaria_gate": {"gid": "783104504", "name": "아발론 엘다리아 성문"},
+    "avalon_eldaria_boss": {"gid": "1671636803", "name": "아발론 엘다리아 보스"},
+    "brawl_sanyang": {"gid": "1719727021", "name": "대난투 산양"},
+    "brawl_heukrang": {"gid": "865735980", "name": "대난투 흑랑"},
+    "brawl_cow": {"gid": "1838992539", "name": "대난투 카우"},
+    "brawl_myojok": {"gid": "779835941", "name": "대난투 묘족"}
 }
 
 BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS_v218jP6t6TliliGxDYnRVJrkyUrQ_NlhqJr6ncwbdBbTHRjkIYgkxcFppFtIp1uCZA1_MHzteVZH/pubhtml"
