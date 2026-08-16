@@ -5,6 +5,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+from PIL import Image, ImageChops
 import time
 
 # 요일별 GID 매핑
@@ -22,6 +23,25 @@ SHEETS = {
 BASE_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS_v218jP6t6TliliGxDYnRVJrkyUrQ_NlhqJr6ncwbdBbTHRjkIYgkxcFppFtIp1uCZA1_MHzteVZH/pubhtml"
 USER_ID = "ferencebw"
 REPO_NAME = "lostsword_gaonnuri"
+
+# =========================================================================
+# [수정 3] 카톡 큰 썸네일용 og:image 생성
+# 카카오톡은 og:image가 가로형(2:1)일 때만 채팅창 폭을 채우는 큰 썸네일을 그림.
+# 원본 스크린샷 상단을 2:1로 크롭해 800x400 썸네일을 별도 저장한다.
+# =========================================================================
+THUMB_W, THUMB_H = 800, 400
+
+def create_thumbnail(day_key):
+    img = Image.open(f"{day_key}.png").convert("RGB")
+    # 캡처 창이 시트보다 넓어 오른쪽이 흰 여백이므로, 콘텐츠 영역만 먼저 잘라낸다
+    bg = Image.new("RGB", img.size, (255, 255, 255))
+    bbox = ImageChops.difference(img, bg).getbbox()
+    if bbox:
+        img = img.crop(bbox)
+    w, h = img.size
+    crop_h = min(h, w // 2)  # 상단에서 2:1 비율만큼 크롭
+    thumb = img.crop((0, 0, w, crop_h)).resize((THUMB_W, THUMB_H), Image.LANCZOS)
+    thumb.save(f"{day_key}_thumb.png", optimize=True)
 
 def create_html_wrapper(day_key, day_name):
     """모바일에서 확대가 가능하고 화면에 꽉 차는 HTML 생성"""
@@ -45,7 +65,9 @@ def create_html_wrapper(day_key, day_name):
     <title>로스트 소드 공략 - {day_name}</title>
     <meta property="og:title" content="로스트 소드 공략 - {day_name}">
     <meta property="og:description" content="가온누리 {day_name} 최신 공략표">
-    <meta property="og:image" content="https://{USER_ID}.github.io/{REPO_NAME}/{day_key}.png?v={timestamp}">
+    <meta property="og:image" content="https://{USER_ID}.github.io/{REPO_NAME}/{day_key}_thumb.png?v={timestamp}">
+    <meta property="og:image:width" content="800">
+    <meta property="og:image:height" content="400">
     <meta property="og:url" content="https://{USER_ID}.github.io/{REPO_NAME}/{day_key}.html?v={timestamp}">
     <meta property="og:type" content="website">
     <style>
@@ -111,7 +133,8 @@ def take_screenshots():
 
             # 캡처 (가장 큰 영역인 viewport 지정)
             canvas.screenshot(f"{day_key}.png")
-            
+
+            create_thumbnail(day_key)
             create_html_wrapper(day_key, day_name)
             print(f"[{day_name}] 완료")
             
